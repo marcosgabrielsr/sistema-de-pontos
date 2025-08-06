@@ -30,16 +30,19 @@ class Func_planilhas(Folders, Func_colab_bd, Func_bd_pontos):
             'fonte_atestado': Font(color='0000FF', bold=True)
         }
 
-    # Função que gera os arquivos excel de um colaborar
-    def criar_planilha(self, mes, ano, nome_colab, faltas=True):
-        name_folder = f'{mes:02d}-{ano}'
-        self.create_folder_mes(name_folder)
-
+    # Função que calcula dados de um mes referente a um ano
+    def calcula_dados_mes(self, mes, ano):
         # Usa datetime para lidar com datas
         self.first_day_of_month = datetime(ano, mes, 1)
         self.last_day_of_month = (self.first_day_of_month + timedelta(days=32)).replace(day=1) - timedelta(days=1)
         self.t_dias = (self.last_day_of_month - self.first_day_of_month).days + 1
-            
+
+    # Função que gera os arquivos excel de um colaborar
+    def criar_planilha(self, mes, ano, nome_colab, faltas=True):
+        name_folder = f'{mes:02d}-{ano}'
+        self.create_folder_mes(name_folder)
+        self.calcula_dados_mes(mes, ano)
+
         # Carregando a planilha
         workbook = openpyxl.load_workbook("controle_de_ponto.xlsx")
         sheets = workbook.sheetnames
@@ -105,9 +108,10 @@ class Func_planilhas(Folders, Func_colab_bd, Func_bd_pontos):
 
     # Função que insere um atestado à uma planilha
     def inserir_atestado(self, dia, path):
+        # Abrindo planilha
         workbook = openpyxl.load_workbook(path)
         sheet_pontos = workbook[workbook.sheetnames[1]]
-
+        # Acessando célula
         celula = sheet_pontos[f'{self.colunas[0]}{dia + 6}']
 
         if celula.value == 'Falta sem Justificativa':
@@ -117,3 +121,32 @@ class Func_planilhas(Folders, Func_colab_bd, Func_bd_pontos):
             return 1
         else:
             return 0
+        
+    # Função que remove uma ou todas as faltas de um funcionário
+    def remover_falta(self, dia, path):
+        # Abrindo planilha
+        workbook = openpyxl.load_workbook(path)
+        sheet_pontos = workbook[workbook.sheetnames[1]]
+        self.calcula_dados_mes()
+
+        if dia == '*':
+            col_inicio = column_index_from_string(self.colunas[0])
+            col_fim = column_index_from_string(self.colunas[3])
+
+            for i in range(7, self.t_dias + 7):
+                celula = sheet_pontos[f'{self.colunas[0]}{i}']
+                if celula.value == 'Falta sem Justificativa':
+                    # Desfaz a mesclagem
+                    sheet_pontos.unmerge_cells(start_row=i, start_column=col_inicio, end_row=i, end_column=col_fim)
+
+                    # Preenche com zeros todas as células que foram retiradas da mesclagem
+                    for col in self.colunas:
+                        sheet_pontos[f'{col}{i}'] = 0
+        else:
+            # Acessando célula e desfazendo a mesclagem
+            i = dia + 6
+            sheet_pontos.unmerge_cells(start_row=i, start_column=col_inicio, end_row=i, end_column=col_fim)
+
+            # Preenche com zeros todas as células que foram retiradas da mesclagem
+            for col in self.colunas:
+                sheet_pontos[f'{col}{i}'] = 0

@@ -35,55 +35,50 @@ class App_Rem_Falta_Func(Func_planilhas):
         data_var = StringVar()
 
         def formatar_data(*args):
-            # Pega a posição atual do cursor
             pos_cursor = self.data_entry.index(INSERT)
-
-            # Valor atual da Entry
             valor_original = data_var.get()
 
-            # Aceita um único caractere '*'
-            if valor_original == "*":
-                return 
+            # Remove tudo que não é número ou '*'
+            permitido = ''.join(c for c in valor_original if c.isdigit() or c == '*')
 
-            # Remove tudo que não é número
-            apenas_digitos = ''.join(filter(str.isdigit, valor_original))
+            # Aceita apenas se começar com '*' ou dígito
+            if not permitido or (permitido[0] != '*' and not permitido[0].isdigit()):
+                data_var.set('')
+                return
 
-            # Limita a 8 caracteres
-            if len(apenas_digitos) > 8:
-                apenas_digitos = apenas_digitos[:8]
+            apenas_digitos = ''.join(filter(str.isdigit, permitido))
 
-            # Novo valor formatado com barras
-            novo_valor = apenas_digitos
-            if len(apenas_digitos) > 4:
-                novo_valor = f"{apenas_digitos[:2]}/{apenas_digitos[2:4]}/{apenas_digitos[4:]}"
-            elif len(apenas_digitos) > 2:
-                novo_valor = f"{apenas_digitos[:2]}/{apenas_digitos[2:]}"
-            
-            # Só atualiza se realmente mudou
+            # Verifica se começa com '*'
+            if permitido.startswith('*'):
+                # Aceita apenas *MMYYYY (máx. 7 caracteres incluindo o '*')
+                if len(apenas_digitos) > 6:
+                    apenas_digitos = apenas_digitos[:6]
+                novo_valor = f"*/{apenas_digitos[:2]}/{apenas_digitos[2:]}" if len(apenas_digitos) > 2 else f"*/{apenas_digitos}"
+            else:
+                # Aceita apenas DDMMAAAA
+                if len(apenas_digitos) > 8:
+                    apenas_digitos = apenas_digitos[:8]
+                if len(apenas_digitos) > 4:
+                    novo_valor = f"{apenas_digitos[:2]}/{apenas_digitos[2:4]}/{apenas_digitos[4:]}"
+                elif len(apenas_digitos) > 2:
+                    novo_valor = f"{apenas_digitos[:2]}/{apenas_digitos[2:]}"
+                else:
+                    novo_valor = apenas_digitos
+
+            # Só atualiza se mudou
             if valor_original != novo_valor:
-                # Define novo valor
                 data_var.set(novo_valor)
 
-                # Calcula nova posição do cursor
                 def ajustar_cursor():
                     nova_pos = pos_cursor
-
-                    # Conta quantas barras existiam antes da posição original
                     barras_antes = valor_original[:pos_cursor].count('/')
                     nova_barras_antes = novo_valor[:pos_cursor].count('/')
-
-                    # Calcula diferença causada pelas barras novas ou removidas
                     diff = nova_barras_antes - barras_antes
                     nova_pos += diff
-
-                    # Garante que o cursor não ultrapasse o tamanho do texto
                     nova_pos = max(0, min(len(novo_valor), nova_pos))
-
                     self.data_entry.icursor(nova_pos)
 
-                # Aguarda a interface atualizar o texto antes de mover o cursor
                 self.data_entry.after_idle(ajustar_cursor)
-
         # Ativa o monitoramento da variável
         data_var.trace_add("write", formatar_data)
 
@@ -104,20 +99,25 @@ class App_Rem_Falta_Func(Func_planilhas):
         self.data_entry.place(relx=0.5, rely=0.55, width=360, anchor='center')
 
         # Botão de confirmar
-        self.btn_alt = Button(self.window_alt, text="Remover faltas", bd=2, bg='#6095C9', fg='white', font=('verdana',12,'bold'), command=self.definir_falta_atestado)
+        self.btn_alt = Button(self.window_alt, text="Remover faltas", bd=2, bg='#6095C9', fg='white', font=('verdana',12,'bold'), command=self.remover_falta)
         self.btn_alt.place(relx=0.5, rely=0.89, anchor='center')
     
     # Método para remover as faltas dos funcionários
-    def remover_falta(self):
+    def rem_falta(self):
         cod = self.get_cod(self.cb_colab_atestado.get())[0][0]
         data = self.data_entry.get()
-        dia, mes, ano = int(data[:2]), int(data[3:5]), data[6:]
+        
+        if data[0] == '*':
+            dia, mes, ano =  '*', int(data[2:4]), data[5:]
+        else:
+            dia, mes, ano = int(data[:2]), int(data[3:5]), data[6:]
+
         path = self.get_sheet_path(f'{mes:02d}-{ano}', f'{cod}-{mes:02d}-{ano}.xlsx')
 
         if path != '':
-            if self.inserir_atestado(dia, path) == 1:
-                messagebox.showinfo('Aviso', 'Atestado adicionado')
-            else:
-                messagebox.showinfo('Aviso', 'Não houve falta neste dia')
+            if self.remover_falta(dia, path) == 1:
+                messagebox.showinfo('Aviso', 'Falta(s) removida(s)')
         else:
             messagebox.showinfo('Aviso', 'Planilha não encontrada')
+
+        
