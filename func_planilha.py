@@ -113,12 +113,15 @@ class Func_planilhas(Folders, Func_colab_bd, Func_bd_pontos):
         sheet_pontos = workbook[workbook.sheetnames[1]]
         # Acessando célula
         celula = sheet_pontos[f'{self.colunas[0]}{dia + 6}']
-
+        print(f'{celula.value}')
         if celula.value == 'Falta sem Justificativa':
             celula.value = 'Falta com Atestado'
             celula.fill = self.estilos_celulas['preenchimento_atestado']
             celula.font = self.estilos_celulas['fonte_atestado']
+            workbook.save(path)
             return 1
+        elif celula.value == 'Falta com Atestado':
+            return 2
         else:
             return 0
         
@@ -150,3 +153,5 @@ class Func_planilhas(Folders, Func_colab_bd, Func_bd_pontos):
             # Preenche com zeros todas as células que foram retiradas da mesclagem
             for col in self.colunas:
                 sheet_pontos[f'{col}{i}'] = 0
+        
+        workbook.save(path)

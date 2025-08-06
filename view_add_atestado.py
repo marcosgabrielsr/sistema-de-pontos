@@ -111,9 +111,15 @@ class App_Add_Atestado(Func_planilhas):
         path = self.get_sheet_path(f'{mes:02d}-{ano}', f'{cod}-{mes:02d}-{ano}.xlsx')
 
         if path != '':
-            if self.inserir_atestado(dia, path) == 1:
+            add = self.inserir_atestado(dia, path)
+            if add == 1:
+                self.window_alt.destroy()
                 messagebox.showinfo('Aviso', 'Atestado adicionado')
+            elif add == 2:
+                self.window_alt.destroy()
+                messagebox.showinfo('Aviso', 'Atestado já adicionado')
             else:
                 messagebox.showinfo('Aviso', 'Não houve falta neste dia')
         else:
+            self.window_alt.destroy()
             messagebox.showinfo('Aviso', 'Planilha não encontrada')
