@@ -19,6 +19,9 @@ from view_add_atestado import App_Add_Atestado
 # Importando pacote para remover faltas dos funcionários
 from view_rem_faltas_func import App_Rem_Falta_Func
 
+# Importando pacote para adicionar faltas aos funcionários
+from view_add_faltas_func import App_Add_Falta_Func
+
 class App_Bd_Pontos(Func_bd_pontos, Func_view_pontos, App_Senha):
     def __init__(self, window_main_pontos=None, colaboradores=None):
         self.window_pontos = Toplevel()
@@ -51,9 +54,11 @@ class App_Bd_Pontos(Func_bd_pontos, Func_view_pontos, App_Senha):
         iten_menu_rem = Menu(menubar_pontos, tearoff=0)
 
         menubar_pontos.add_cascade(label="Opções Avançadas", menu=iten_menu_op_avan)
-        iten_menu_op_avan.add_cascade(label="Opções de Remoção", menu=iten_menu_rem)
 
+        iten_menu_op_avan.add_cascade(label="Opções de Remoção", menu=iten_menu_rem)
         iten_menu_op_avan.add_command(label="Adicionar atestado", command=self.adicionar_atestado)
+        iten_menu_op_avan.add_command(label="Adicionar Falta", command=self.add_faltas_func)
+
         iten_menu_rem.add_command(label="Remover dados antigos", command=self.rem_dados_antigos)
         iten_menu_rem.add_command(label="Remover faltas", command=self.rem_faltas_func)
 
@@ -310,3 +315,7 @@ class App_Bd_Pontos(Func_bd_pontos, Func_view_pontos, App_Senha):
     # Função que chama uma janela para remover as faltas de um funcionário
     def rem_faltas_func(self):
         App_Rem_Falta_Func(w_main=self.window_pontos, colaboradores=self.colaboradores)
+
+    # Função que chama uma janela para adicionar faltas a um usuário
+    def add_faltas_func(self):
+        App_Add_Falta_Func(w_main=self.window_pontos, colaboradores=self.colaboradores)

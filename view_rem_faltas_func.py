@@ -11,7 +11,7 @@ class App_Rem_Falta_Func(Func_planilhas):
     # Método construtor
     def __init__(self, w_main=None, colaboradores=None):
         # Inicializando as configurações principais da janela
-        self.window_alt = Toplevel()
+        self.window_rem_falta = Toplevel()
         self.w_main = w_main
         super().__init__()
 
@@ -21,13 +21,13 @@ class App_Rem_Falta_Func(Func_planilhas):
 
     # Configuração da Janela
     def screen_alt(self):
-        self.window_alt.title("Remover Faltas Funcionário")
-        self.window_alt.configure(background = "#043F7C")
-        self.window_alt.geometry('450x225')
-        self.window_alt.resizable(False, False)
-        self.window_alt.transient(self.w_main)
-        self.window_alt.focus_force()
-        self.window_alt.grab_set()
+        self.window_rem_falta.title("Remover Faltas Funcionário")
+        self.window_rem_falta.configure(background = "#043F7C")
+        self.window_rem_falta.geometry('450x225')
+        self.window_rem_falta.resizable(False, False)
+        self.window_rem_falta.transient(self.w_main)
+        self.window_rem_falta.focus_force()
+        self.window_rem_falta.grab_set()
     
     # Configuração dos widgets da Janela
     def widgets_window_alt(self):
@@ -83,41 +83,46 @@ class App_Rem_Falta_Func(Func_planilhas):
         data_var.trace_add("write", formatar_data)
 
         # Label para senha atual
-        self.text1_lbl = Label(self.window_alt, text="Colaborador:", bg='#043F7C', foreground='white', font=('verdana',14,'bold'))
+        self.text1_lbl = Label(self.window_rem_falta, text="Colaborador:", bg='#043F7C', foreground='white', font=('verdana',14,'bold'))
         self.text1_lbl.place(relx=0.05, rely=0.06)
 
         # Caixa de entrada de texto para confirmar senha atual
-        self.cb_colab_atestado = ttk.Combobox(self.window_alt, values=self.colaboradores, font=('verdana',12), state='readonly')
+        self.cb_colab_atestado = ttk.Combobox(self.window_rem_falta, values=self.colaboradores, font=('verdana',12), state='readonly')
         self.cb_colab_atestado.place(relx=0.5, rely=0.25, width=360, anchor='center')
 
         # Label para nova senha
-        self.text2_lbl = Label(self.window_alt, text="Data:", bg = '#043F7C', foreground='white', font=('verdana',14,'bold'))
+        self.text2_lbl = Label(self.window_rem_falta, text="Data:", bg = '#043F7C', foreground='white', font=('verdana',14,'bold'))
         self.text2_lbl.place(relx=0.05, rely=0.36)
 
         # Caixa de entrada de texto para nova senha
-        self.data_entry = Entry(self.window_alt, textvariable=data_var, font=('verdana', 12))
+        self.data_entry = Entry(self.window_rem_falta, textvariable=data_var, font=('verdana', 12))
         self.data_entry.place(relx=0.5, rely=0.55, width=360, anchor='center')
 
         # Botão de confirmar
-        self.btn_alt = Button(self.window_alt, text="Remover faltas", bd=2, bg='#6095C9', fg='white', font=('verdana',12,'bold'), command=self.remover_falta)
+        self.btn_alt = Button(self.window_rem_falta, text="Remover faltas", bd=2, bg='#6095C9', fg='white', font=('verdana',12,'bold'), command=self.rem_falta)
         self.btn_alt.place(relx=0.5, rely=0.89, anchor='center')
     
     # Método para remover as faltas dos funcionários
     def rem_falta(self):
-        cod = self.get_cod(self.cb_colab_atestado.get())[0][0]
+        nome = self.cb_colab_atestado.get()
+        cod = self.get_cod(nome)[0][0]
         data = self.data_entry.get()
         
         if data[0] == '*':
-            dia, mes, ano =  '*', int(data[2:4]), data[5:]
+            dia, mes, ano =  '*', int(data[2:4]), int(data[5:])
+            self.criar_planilha(mes, ano, nome, faltas=False)
+            messagebox.showinfo('Aviso', 'Faltas removidas')
+            self.window_rem_falta.destroy()
         else:
-            dia, mes, ano = int(data[:2]), int(data[3:5]), data[6:]
+            dia, mes, ano = int(data[:2]), int(data[3:5]), int(data[6:])
+            path = self.get_sheet_path(f'{mes:02d}-{ano}', f'{cod}-{mes:02d}-{ano}.xlsx')
 
-        path = self.get_sheet_path(f'{mes:02d}-{ano}', f'{cod}-{mes:02d}-{ano}.xlsx')
-
-        if path != '':
-            if self.remover_falta(dia, path) == 1:
-                messagebox.showinfo('Aviso', 'Falta(s) removida(s)')
-        else:
-            messagebox.showinfo('Aviso', 'Planilha não encontrada')
+            if path != '':
+                if self.remover_falta(dia, mes, ano, nome, path) == 1:
+                    messagebox.showinfo('Aviso', 'Falta(s) removida(s)')
+                    self.window_rem_falta.destroy()
+            else:
+                messagebox.showinfo('Aviso', 'Planilha não encontrada')
+                self.window_rem_falta.destroy()
 
         

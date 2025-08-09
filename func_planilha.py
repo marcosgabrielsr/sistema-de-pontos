@@ -22,6 +22,9 @@ class Func_planilhas(Folders, Func_colab_bd, Func_bd_pontos):
     def __init__(self):
         self.colunas = ('D', 'E', 'F', 'G')
 
+        self.col_inicio = column_index_from_string(self.colunas[0])
+        self.col_fim = column_index_from_string(self.colunas[3])
+
         self.estilos_celulas = {
             'alinhamento_centro': Alignment(horizontal='center', vertical='center'),
             'preenchimento_falta': PatternFill(start_color='FFCCCC', end_color='FFCCCC', fill_type='solid'),
@@ -38,7 +41,7 @@ class Func_planilhas(Folders, Func_colab_bd, Func_bd_pontos):
         self.t_dias = (self.last_day_of_month - self.first_day_of_month).days + 1
 
     # Função que gera os arquivos excel de um colaborar
-    def criar_planilha(self, mes, ano, nome_colab, faltas=True):
+    def criar_planilha(self, mes, ano, nome_colab, faltas=True, lista_faltas=None):
         name_folder = f'{mes:02d}-{ano}'
         self.create_folder_mes(name_folder)
         self.calcula_dados_mes(mes, ano)
@@ -85,17 +88,28 @@ class Func_planilhas(Folders, Func_colab_bd, Func_bd_pontos):
                 valores = [sheet_pontos[f'{col}{i}'].value for col in self.colunas]
 
                 if all(v == 0 for v in valores) and datetime(ano, mes, dia).weekday() != 6:
-                    col_inicio = column_index_from_string(self.colunas[0])
-                    col_fim = column_index_from_string(self.colunas[3])
-
                     # Mesclando as células
-                    sheet_pontos.merge_cells(start_row=i, start_column=col_inicio, end_row=i, end_column=col_fim)
+                    sheet_pontos.merge_cells(start_row=i, start_column=self.col_inicio, end_row=i, end_column=self.col_fim)
 
                     celula = sheet_pontos[f'{self.colunas[0]}{i}']
                     celula.alignment = self.estilos_celulas['alinhamento_centro']
                     celula.value = 'Falta sem Justificativa'
                     celula.fill = self.estilos_celulas['preenchimento_falta']
                     celula.font = self.estilos_celulas['fonte_falta']
+            else:
+                # Verifica se a lista de dias de falta é diferente de None
+                if lista_faltas is not None:
+                    print(f'Lista de faltas: {lista_faltas}')
+                    # Caso este dia esteja na lista de faltas, uma falta é definida na planilha
+                    if i in lista_faltas:
+                        # Mesclando as células
+                        sheet_pontos.merge_cells(start_row=i, start_column=col_inicio, end_row=i, end_column=col_fim)
+
+                        celula = sheet_pontos[f'{self.colunas[0]}{i}']
+                        celula.alignment = self.estilos_celulas['alinhamento_centro']
+                        celula.value = 'Falta sem Justificativa'
+                        celula.fill = self.estilos_celulas['preenchimento_falta']
+                        celula.font = self.estilos_celulas['fonte_falta']
 
         # definindo caminho para salvar a planilha
         path_new_sheet = f'planilhas/{mes:02d}-{ano}/{cod}-{mes:02d}-{ano}.xlsx'
@@ -124,34 +138,52 @@ class Func_planilhas(Folders, Func_colab_bd, Func_bd_pontos):
             return 2
         else:
             return 0
-        
-    # Função que remove uma ou todas as faltas de um funcionário
-    def remover_falta(self, dia, path):
+    
+    # Função que insere um atestado à uma planilha
+    def inserir_falta(self, dia, path):
         # Abrindo planilha
         workbook = openpyxl.load_workbook(path)
         sheet_pontos = workbook[workbook.sheetnames[1]]
-        self.calcula_dados_mes()
+        i = dia + 6
+        # Mesclando as células
+        sheet_pontos.merge_cells(start_row=i, start_column=self.col_inicio, end_row=i, end_column=self.col_fim)
 
-        if dia == '*':
-            col_inicio = column_index_from_string(self.colunas[0])
-            col_fim = column_index_from_string(self.colunas[3])
+        celula = sheet_pontos[f'{self.colunas[0]}{i}']
+        celula.alignment = self.estilos_celulas['alinhamento_centro']
+        celula.value = 'Falta sem Justificativa'
+        celula.fill = self.estilos_celulas['preenchimento_falta']
+        celula.font = self.estilos_celulas['fonte_falta']
 
-            for i in range(7, self.t_dias + 7):
-                celula = sheet_pontos[f'{self.colunas[0]}{i}']
-                if celula.value == 'Falta sem Justificativa':
-                    # Desfaz a mesclagem
-                    sheet_pontos.unmerge_cells(start_row=i, start_column=col_inicio, end_row=i, end_column=col_fim)
-
-                    # Preenche com zeros todas as células que foram retiradas da mesclagem
-                    for col in self.colunas:
-                        sheet_pontos[f'{col}{i}'] = 0
-        else:
-            # Acessando célula e desfazendo a mesclagem
-            i = dia + 6
-            sheet_pontos.unmerge_cells(start_row=i, start_column=col_inicio, end_row=i, end_column=col_fim)
-
-            # Preenche com zeros todas as células que foram retiradas da mesclagem
-            for col in self.colunas:
-                sheet_pontos[f'{col}{i}'] = 0
-        
         workbook.save(path)
+
+    # Função que remove uma ou todas as faltas de um funcionário
+    def remover_falta(self, dia, mes, ano, colab_rem_falta, path):
+        # Abrindo planilha
+        workbook = openpyxl.load_workbook(path)
+        sheet_pontos = workbook[workbook.sheetnames[1]]
+        self.calcula_dados_mes(mes, ano)
+
+        # Listas de eventos importantes no mês
+        lista_faltas = []
+        lista_atestados = []
+        lista_feriados = []
+
+        # Percorre a planilha e anota os dias de atestado, feriado e faltas (diferente do dia a ser removido)
+        for i in range(7, self.t_dias + 7):
+            d = i - 6
+            celula = sheet_pontos[f'{self.colunas[0]}{i}']
+            if d != dia:
+                if celula.value == 'Falta sem Justificativa':
+                    lista_faltas.append(d)
+                elif celula.value == 'Falta com Atestado':
+                    lista_atestados.append(d)
+                elif celula.value == 'Feriado':
+                    lista_feriados.append(d)
+        # Salva a planilha
+        workbook.save(path)
+        print(f'lista_faltas: {lista_faltas}')
+
+        # self.criar_planilha(mes, ano, colab_rem_falta, faltas=False, lista_faltas=lista_faltas)
+        # Adiciona os atestados
+        for a in lista_atestados:
+            self.inserir_atestado(a, path)
